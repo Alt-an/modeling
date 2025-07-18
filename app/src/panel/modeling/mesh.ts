@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { toIndexed } from '../util';
+import { Notification } from '../notif';
 
 export type Edge = [number, number];
 export type Face = [number, number, number];
@@ -40,7 +41,9 @@ export class EditableMesh {
     let indexAttr = this.geometry.getIndex();
     if (!indexAttr) {
       toIndexed(this.mesh);
+      Notification.warn("Unindexed Geometry", "Can't find index for this geometry, auto indexing...");
       indexAttr = this.geometry.getIndex()!;
+      if(!indexAttr) Notification.warn("Auto-indexing Failed", "Can't automatically index for this geometry");
     }
 
     const uniqueVerts: THREE.Vector3[] = [];

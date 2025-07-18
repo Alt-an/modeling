@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { BufferGeometryUtils, TransformControls } from 'three/examples/jsm/Addons.js';
 import { Viewport } from './viewport';
-import { createVertexDisplay } from './display';
+import { Notification } from './notif';
 const elementsMap = new Map<string, HTMLElement>();
 export function fixTransformControls(tf:TransformControls) {
   tf.addEventListener("change", () => {
@@ -222,6 +222,7 @@ export function getPointsInFrustum(
 export function toIndexed(mesh:THREE.Mesh) {
   const geometry = mesh.geometry;
   const indexed = BufferGeometryUtils.mergeVertices(geometry, 5e-2);
+  if(indexed.getIndex()!) Notification.error("Failed to merge vertices");
   geometry.dispose();
   mesh.geometry = indexed;
   indexed.computeBoundingBox();

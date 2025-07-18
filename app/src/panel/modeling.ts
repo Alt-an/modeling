@@ -7,6 +7,7 @@ import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import * as THREE from 'three';
 import { Mode } from './mode';
 import { ModelingTool } from './modeling/tools';
+import { Notification } from './notif';
 
 let transform!: TransformControls;
 let currentMode: 'vertex' | 'edge' | 'face' = 'vertex';
@@ -74,6 +75,8 @@ export const Modeling = {
 
   select(obj: THREE.Object3D) {
     if(!(obj instanceof THREE.Mesh)) return;
+    if(obj === selected) return;
+    this.drop();
     selected = obj;
     switch (currentMode) {
       case 'vertex': Vertex.select(obj); break;

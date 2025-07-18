@@ -2,13 +2,13 @@ const panel = document.getElementById("notif-container")!;
 
 const Config = {
     intro: 1.0,
-    outro: 1.0,
+    outro: 1.25,
     delete: 0.5,
-    timingFunction: `cubic-bezier(0.720, -1.300, 1.000, 1.000)`
+    timingFunction: `cubic-bezier(0.900, -0.700, 1.000, 1.000)`
 }
 
 export const Notification = {
-    send: (head:string, desc?:string, duration:number = 1500, color:string = "#ffffff", icon:string = "info") => {
+    send: (head:string, desc?:string, duration:number = 7500, color:string = "#ffffff", icon:string = "info") => {
         const container = document.createElement("div");
         container.innerHTML = /*html*/`
             <div class="content">
@@ -30,29 +30,28 @@ export const Notification = {
         setTimeout(() => {
             container.style.transform = `translateX(0)`;
         });
+        const height = container.getBoundingClientRect().height;
         setTimeout(() => {
-            cover.style.width = `0`;
+            cover.style.width = `5%`;
             bar.style.width = `0`;
             container.style.transition = `transform ${Config.outro}s ${Config.timingFunction}`;
             setTimeout(() => {
                 cover.style.width = `100%`;
-                container.style.transform = `translateX(100%) scaleY(1)`;
-                container.style.transition = `transform ${Config.delete}s`;
                 setTimeout(() => {
-                    container.style.transform = `translateX(100%) scaleY(0)`
-                }, Config.outro * 2);
+                    container.style.transform = `translateX(100%)`;
+                    container.style.height = `${height}px`;
+                    setTimeout(() => {
+                        container.style.transition = `height ${Config.delete}s`;
+                        container.style.height = `0`;
+                        setTimeout(() => {panel.removeChild(container)}, Config.delete * 1000);
+                    }, Config.outro * 1000);
+                }, Config.intro * 500);
             }, duration);
         }, Config.intro / 2 * 1000);
-        //setTimeout(() => {panel.removeChild(container)}, duration);
     },
     log: (head:string, desc?:string, duration?:number) => { Notification.send(head, desc, duration, "#ffffff", "info") },
-    announce: (head:string, desc?:string, duration?:number) => { Notification.send(head, desc, duration, "#00afdf", "priority_high") },
+    announce: (head:string, desc?:string, duration?:number) => { Notification.send(head, desc, duration, "#00afdf", "brightness_alert") },
     warn: (head:string, desc?:string, duration?:number) => { Notification.send(head, desc, duration, "#efcf10", "warning") },
     error: (head:string, desc?:string, duration?:number) => { Notification.send(head, desc, duration, "#ef3010", "bug_report") },
     success: (head:string, desc?:string, duration?:number) => { Notification.send(head, desc, duration, "#20df3f", "check_circle") },
 }
-Notification.log("Exampleobfrveu", "descrfr")
-Notification.announce("Exampleobfrveu", "descrfr")
-Notification.warn("Exampleobfrveu", "descrfr")
-Notification.error("Exampleobfrveu", "descrfr")
-Notification.success("Exampleobfrveu", "descrfr")

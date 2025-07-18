@@ -4,19 +4,17 @@
     flex-direction: column;
     top:var(--spc-lg);
     right:0;
-    padding:var(--spc-sm);
-    background:blue;
     width:fit-content;
     z-index: 15;
 }
 #notif-container > div {
     position:relative;
     min-width: 20rem;
-    padding: var(--spc-sm) var(--spc-md);
     color:var(--scn-10);
     --color: #ffffff;
     display:flex;
     flex-direction: column;
+    height:fit-content;
 }
 #notif-container .content {
     position:relative;
@@ -36,14 +34,20 @@
 }
 #notif-container .title {
     font-weight:600;
+    font-size:var(--fs-sm);
 }
-#notif-container .desc {
+#notif-container .description {
     font-weight:400;
+    max-width: 47ch;
+    word-wrap: break-word;
+    white-space: normal;
+    padding-right: var(--spc-md);
+    font-size:var(--fs-xs);
 }
 #notif-container .bar {
     align-self: flex-end;
     width:100%;
-    height: 2px;
+    height: 5px;
     background:var(--color);
 }
 #notif-container .cover {
