@@ -42,6 +42,7 @@ export class EditableMesh {
     if (!indexAttr) {
       toIndexed(this.mesh);
       Notification.warn("Unindexed Geometry", "Can't find index for this geometry, auto indexing...");
+      this.geometry = this.mesh.geometry as THREE.BufferGeometry;
       indexAttr = this.geometry.getIndex()!;
       if(!indexAttr) Notification.warn("Auto-indexing Failed", "Can't automatically index for this geometry");
     }

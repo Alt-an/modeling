@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BufferGeometryUtils, TransformControls } from 'three/examples/jsm/Addons.js';
+import { BufferGeometryUtils, RectAreaLightUniformsLib, TransformControls } from 'three/examples/jsm/Addons.js';
 import { Viewport } from './viewport';
 import { Notification } from './notif';
 const elementsMap = new Map<string, HTMLElement>();
@@ -219,14 +219,24 @@ export function getPointsInFrustum(
 ): THREE.Vector3[] {
   return points.filter(p => frustum.containsPoint(p));
 }
-export function toIndexed(mesh:THREE.Mesh) {
+export function toIndexed(mesh: THREE.Mesh) {
   const geometry = mesh.geometry;
-  const indexed = BufferGeometryUtils.mergeVertices(geometry, 5e-2);
-  if(indexed.getIndex()!) Notification.error("Failed to merge vertices");
-  geometry.dispose();
-  mesh.geometry = indexed;
-  indexed.computeBoundingBox();
-  indexed.computeBoundingSphere();
+  if (geometry.getIndex()) {
+    Notification.error("Geometry is already indexed", "Are you certain what you are doing is correct?");
+  }
+  addIndexBuffer(geometry);
+  if (!geometry.getIndex()) {
+    Notification.error("Failed to merge vertices", "Geometry remains unindexed");
+    return;
+  }
+}
+function addIndexBuffer(geometry: THREE.BufferGeometry): THREE.BufferGeometry {
+  if (geometry.index) return geometry; // already indexed
+
+  const count = geometry.attributes.position.count;
+  const indices = Array.from({ length: count }, (_, i) => i);
+  geometry.setIndex(indices);
+  return geometry;
 }
 export function getEdges(geometry: THREE.BufferGeometry): [number, number][] {
   const index = geometry.getIndex();

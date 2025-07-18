@@ -70,13 +70,14 @@ export const Modeling = {
       case 'edge': Vertex.enable(false); Edge.enable(true); Face.enable(false); tool = Edge.tool; break;
       case 'face': Vertex.enable(false); Edge.enable(false); Face.enable(true); tool = Face.tool; break;
     }
-    if(selected) this.select(selected);
+    const select = selected;
+    this.drop();
+    if(select) this.select(select);
   },
 
   select(obj: THREE.Object3D) {
     if(!(obj instanceof THREE.Mesh)) return;
-    if(obj === selected) return;
-    this.drop();
+    if(obj !== selected) this.drop();
     selected = obj;
     switch (currentMode) {
       case 'vertex': Vertex.select(obj); break;
@@ -108,8 +109,12 @@ function vertex() { Modeling.setMode('vertex'); }
 function edge() { Modeling.setMode('edge'); }
 function face() { Modeling.setMode('face'); }
 
-function extrude() { tool?.extrude?.() }
-function inset() {  document.dispatchEvent(new CustomEvent("inset")) }
-function bevel() {  document.dispatchEvent(new CustomEvent("bevel")) }
-function knife() {  document.dispatchEvent(new CustomEvent("knife")) }
-function merge() {  document.dispatchEvent(new CustomEvent("merge")) }
+function invoke(func?:Function) {
+  if(!func) return Notification.warn("Unsupported use of tool", "The tool you are using is not compatible with this mode");
+  func();
+}
+function extrude() { if(tool) invoke(tool.extrude) }
+function inset() { if(tool) invoke(tool.inset) }
+function bevel() { if(tool) invoke(tool.bevel) }
+function knife() { if(tool) invoke(tool.knife) }
+function merge() { if(tool) invoke(tool.merge) }
