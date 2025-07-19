@@ -1,14 +1,14 @@
 const panel = document.getElementById("notif-container")!;
 
 const Config = {
-    intro: 1.0,
-    outro: 1.25,
+    intro: 0.75,
+    outro: 1,
     delete: 0.5,
     timingFunction: `cubic-bezier(0.900, -0.700, 1.000, 1.000)`
 }
 
 export const Notification = {
-    send: (head:string, desc?:string, duration:number = 7500, color:string = "#ffffff", icon:string = "info") => {
+    send: (head:string, desc?:string, duration:number = 5000, color:string = "#ffffff", icon:string = "info") => {
         const container = document.createElement("div");
         container.innerHTML = /*html*/`
             <div class="content">

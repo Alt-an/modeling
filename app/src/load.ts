@@ -3,7 +3,7 @@ fetch('/template/panels.html')
 .then(async html => {
     const now = performance.now();
     const Notification = (await import("./panel/notif.ts")).Notification;
-    Notification.announce("Loading", "Please wait...");
+    Notification.announce("Loading", "Please wait...", 2000);
     window.onerror = function(message, source, lineno, colno, error) {
         const desc = message.toString();
         Notification.error(error?.constructor.name ?? "UnknownError", desc);
@@ -29,5 +29,5 @@ fetch('/template/panels.html')
     import("./component/radio.ts").then(e => e.Radio.attachAllIn(document.body));
     import("./component/expandable.ts").then(e => e.Expandable.attachAllIn(document.body));
     import("./component/toggleable.ts").then(e => e.Toggleable.attachAllIn(document.body));
-    Notification.success(`Loaded in ${performance.now() - now}ms`, "Thanks for waiting, enjoy!");
+    Notification.success(`Loaded in ${performance.now() - now}ms`, "Thanks for waiting, enjoy!", 2000);
 });

@@ -63,6 +63,9 @@ export function init(sharedDummy: THREE.Object3D, transformControl: TransformCon
     if (!selectedIndices.includes(faceIndex)) {
       selectedIndices.push(faceIndex);
       updateSelectionDisplay();
+    } else {
+      selectedIndices.splice(selectedIndices.indexOf(faceIndex));
+      updateSelectionDisplay();
     }
   });
 }

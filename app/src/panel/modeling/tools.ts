@@ -28,13 +28,12 @@ export function extrudeFaces(mesh: EditableMesh, faces: Face[], displacement = 1
   for (const face of faces) {
     const [i0, i1, i2] = face;
     const normal = getFaceNormal(mesh, face); // normalized
-    const deltaWorld = normal.clone().multiplyScalar(displacement);
-    const deltaLocal = mesh.mesh.worldToLocal(deltaWorld.add(mesh.mesh.position.clone())).sub(mesh.mesh.position);
+    const displace = normal.clone().multiplyScalar(displacement);
 
     // map original verts -> new extruded verts
     const newIndices = [i0, i1, i2].map(i => {
       if (!oldToNewVertex.has(i)) {
-        const newPos = mesh.vertices[i].clone().add(deltaLocal);
+        const newPos = mesh.vertices[i].clone().add(displace);
         oldToNewVertex.set(i, mesh.addVertex(newPos));
       }
       return oldToNewVertex.get(i)!;
