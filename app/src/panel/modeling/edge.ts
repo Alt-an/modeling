@@ -3,12 +3,15 @@ import { Viewport } from '../viewport';
 import { TransformControls, LineSegments2 } from 'three/examples/jsm/Addons.js';
 import { createRaycastFromScreen, findClosestEdge, rayToLocalSpace, toIndexed } from '../util';
 import { createEdgeDisplay } from '../display';
-import { EditableMesh } from './mesh';
+import { Edge, EditableMesh } from './mesh';
 import { ModelingTool } from './tools';
+import * as EXTRUDE from './extrude';
+import * as BEVEL from './bevel';
+import * as KNIFE from './knife';
 
 let enabled = false;
 let selected: EditableMesh | null = null;
-let selectedEdges: [number, number][] = [];
+let selectedEdges: Edge[] = [];
 
 let transform: TransformControls;
 let dummy = new THREE.Object3D();
@@ -167,4 +170,20 @@ function onTransformMove() {
 }
 
 export const tool:ModelingTool = {
+  extrude: () => {
+    if(selected === null) return;
+    const added = EXTRUDE.extrudeEdges(selected, selectedEdges, 0.1);
+    selectedEdges = added;
+    updateTransformOrigin();
+  },
+  bevel: () => {
+    if(selected === null) return;
+    const added = BEVEL.bevelEdges(selected, selectedEdges, 0.1);
+  },
+  knife: () => {
+    if(selected === null) return;
+    const added = KNIFE.knifeEdges(selected, selectedEdges, 0.5);
+    selectedEdges = added;
+    updateTransformOrigin();
+  }
 }

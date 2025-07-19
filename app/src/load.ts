@@ -4,11 +4,28 @@ fetch('/template/panels.html')
     const now = performance.now();
     const Notification = (await import("./panel/notif.ts")).Notification;
     Notification.announce("Loading", "Please wait...", 2000);
-    window.onerror = function(message, source, lineno, colno, error) {
+    window.onerror = function (message, source, lineno, colno, error) {
         const desc = message.toString();
-        Notification.error(error?.constructor.name ?? "UnknownError", desc);
-        throw error;
-    };
+        const name = error?.constructor?.name ?? "UnknownError";
+
+        // Extract just the filename from the source URL
+        const shortSource = source ? source.split('/').pop() : "unknown";
+
+        // Clean stack: remove full URL paths, keep just filename:line:col
+        let cleanStack = error?.stack ?? "";
+        if (cleanStack) {
+            cleanStack = cleanStack
+            .split('\n')
+            .map(line => line.replace(/^.*\/([^\/]+:\d+:\d+)$/, '    at $1'))
+            .join('\n');
+        }
+
+        Notification.error(name, desc);
+
+        if (cleanStack) {
+            console.error(`${desc}\n\tat ${shortSource}:${lineno}:${colno}\n`+"Stack trace:\n" + cleanStack);
+        } else console.error(`$${desc}\n\tat ${shortSource}:${lineno}:${colno}`);
+        };
     const orgWarn = console.warn;
     console.warn = (...data:any[]) => {
         data.forEach(e => {

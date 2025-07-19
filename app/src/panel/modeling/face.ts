@@ -5,10 +5,12 @@ import { createRaycastFromScreen } from '../util';
 import { createFaceOutlineDisplay } from '../display';
 import { EditableMesh } from './mesh';
 import { ModelingTool } from './tools';
-import * as EXTRUDE from './extrude'
+import * as EXTRUDE from './extrude';
+import * as KNIFE from './knife';
+import * as INSET from './inset';
 
-let selected: EditableMesh | null = null;
-let selectedIndices: number[] = [];
+export let selected: EditableMesh | null = null;
+export let selectedIndices: number[] = [];
 let enabled = false;
 
 let transform: TransformControls;
@@ -100,7 +102,7 @@ function clearDisplay() {
   }
 }
 
-function updateSelectionDisplay() {
+export function updateSelectionDisplay() {
   if (!selected || selectedIndices.length === 0) {
     clearDisplay();
     return;
@@ -159,6 +161,24 @@ export const tool:ModelingTool = {
     if(selected === null) return;
     const added = EXTRUDE.extrudeFaces(selected, selectedIndices.map(i => selected!.faces[i]), 0.1);
     selectedIndices = added;
+    updateSelectionDisplay();
+  },
+  knife: () => {
+    if(selected === null) return;
+    const dir = new THREE.Vector3();
+    Viewport.camera.getWorldDirection(dir);
+    const newIndices = [...selectedIndices];
+    selectedIndices.forEach(i => {
+      const faces = KNIFE.knifeCutFace(selected!, i, Viewport.camera.position, dir)
+      newIndices.push(...faces);
+    });
+    selectedIndices = newIndices;
+    updateSelectionDisplay();
+  },
+  inset: () => {
+    if(selected === null) return;
+    const faces = INSET.insetFaces(selected, selectedIndices.map(i => selected!.faces[i]), 0.3, true);
+    selectedIndices = faces;
     updateSelectionDisplay();
   }
 }

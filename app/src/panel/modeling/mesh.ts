@@ -13,8 +13,7 @@ export class EditableMesh {
   faces: Face[] = [];
   edges: Set<string> = new Set(); // key = sorted "a:b", internal only
 
-  selectedVertices = new Set<number>();
-  selectedEdges = new Set<string>();
+
   vertMap: Map<number, number> = new Map(); // Add this field in the class
 
   constructor(mesh: THREE.Mesh) {
@@ -28,8 +27,6 @@ export class EditableMesh {
     this.vertices.length = 0;
     this.faces.length = 0;
     this.edges.clear();
-    this.selectedVertices.clear();
-    this.selectedEdges.clear();
     this.vertMap.clear();
   }
 
@@ -112,13 +109,6 @@ export class EditableMesh {
     return this.vertices.map(v => this.mesh.localToWorld(v.clone()));
   }
 
-  getSelectedVertexIndices(): number[] {
-    return Array.from(this.selectedVertices);
-  }
-
-  getSelectedVertexPositions(): THREE.Vector3[] {
-    return Array.from(this.selectedVertices).map(i => this.vertices[i]);
-  }
   addVertex(position: THREE.Vector3): number {
     const logicalIndex = this.vertices.length;
     this.vertices.push(position.clone());
@@ -141,16 +131,16 @@ export class EditableMesh {
     }
     this.commit();
   }
-  clearVertexSelection(): void {
-    this.selectedVertices.clear();
+  getConnectedVertices(index: number): Set<number> {
+    const connected = new Set<number>();
+    for (const [a, b, c] of this.faces) {
+      if (a === index) { connected.add(b); connected.add(c); }
+      else if (b === index) { connected.add(a); connected.add(c); }
+      else if (c === index) { connected.add(a); connected.add(b); }
+    }
+    return connected;
   }
   // ======== Egde ========
-
-
-  clearEdgeSelection(): void {
-    this.selectedEdges.clear();
-  }
-
   addEdge(a: number, b: number) {
     const [min, max] = a < b ? [a, b] : [b, a];
     this.edges.add(`${min}:${max}`);
@@ -160,15 +150,32 @@ export class EditableMesh {
     const [a, b] = key.split(':').map(Number);
     return [this.vertices[a], this.vertices[b]];
   }
+  getFacesUsingEdge(a: number, b: number): Face[] {
+    const faces: Face[] = [];
+    for (const face of this.faces) {
+      if (face.includes(a) && face.includes(b)) {
+        faces.push(face);
+      }
+    }
+    return faces;
+  }
+  isPointOnEdge(p: number, a: number, b: number, tolerance = 1e-5): boolean {
+    const P = this.vertices[p];
+    const A = this.vertices[a];
+    const B = this.vertices[b];
 
-  selectVertex(index: number) {
-    this.selectedVertices.add(index);
+    const AB = B.clone().sub(A);
+    const AP = P.clone().sub(A);
+
+    const abLengthSq = AB.lengthSq();
+    const proj = AP.dot(AB) / abLengthSq;
+
+    if (proj < -tolerance || proj > 1 + tolerance) return false;
+
+    const closest = A.clone().add(AB.multiplyScalar(proj));
+    return closest.distanceTo(P) < tolerance;
   }
 
-  selectEdge(a: number, b: number) {
-    const [min, max] = a < b ? [a, b] : [b, a];
-    this.selectedEdges.add(`${min}:${max}`);
-  }
 
   commit(): void {
     const posAttr = this.geometry.getAttribute('position') as THREE.BufferAttribute;
@@ -207,10 +214,6 @@ export class EditableMesh {
     geometry.computeVertexNormals();
     geometry.attributes.position.needsUpdate = true;
     geometry.index!.needsUpdate = true;
-  }
-
-  getSelectedEdges(): [THREE.Vector3, THREE.Vector3][] {
-    return Array.from(this.selectedEdges).map(k => this.getEdgeVertices(k));
   }
 
   // ==== Face ========
@@ -252,10 +255,6 @@ export class EditableMesh {
     return this.faces[index];
   }
 
-  clearSelection() {
-    this.selectedVertices.clear();
-    this.selectedEdges.clear();
-  }
   computeFlatNormals() {
     const normals: THREE.Vector3[] = this.vertices.map(() => new THREE.Vector3());
 

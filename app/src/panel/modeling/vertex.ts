@@ -6,6 +6,7 @@ import { createSelectionMarkers, createVertexDisplay, updateVertexDisplay } from
 import { TransformControls } from 'three/examples/jsm/Addons.js';
 import { EditableMesh } from './mesh';
 import { ModelingTool } from './tools';
+import { mergeVertices } from './merge';
 
 let enabled = false;
 let selected: EditableMesh | null = null;
@@ -233,4 +234,9 @@ function clearSelectionTimer() {
   }
 }
 export const tool:ModelingTool = {
+  merge: () => {
+    if(selected === null) return;
+    mergeVertices(selected, selectedIndices);
+    select(selected.mesh);
+  },
 }

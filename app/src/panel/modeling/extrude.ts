@@ -1,5 +1,4 @@
-import { EditableMesh, Face } from "./mesh";
-import * as THREE from 'three';
+import { Edge, EditableMesh, Face } from "./mesh";
 import { getFaceNormal } from "./utils";
 export function extrudeFaces(mesh: EditableMesh, faces: Face[], displacement = 1.0): number[] {
   if (!faces.length) return [];
@@ -52,6 +51,42 @@ export function extrudeFaces(mesh: EditableMesh, faces: Face[], displacement = 1
   mesh.commit();
   return newFaceIndices;
 }
-export function extrudeEdges(mesh:EditableMesh) {
+export function extrudeEdges(mesh: EditableMesh, edges: Edge[], displacement = 1.0): Edge[] {
+  const oldToNewVertex = new Map<number, number>();
+  const newEdges: Edge[] = [];
+  
+  // Step 1: duplicate edge vertices and displace
+  for (const [a, b] of edges) {
+    for (const i of [a, b]) {
+      if (!oldToNewVertex.has(i)) {
+        const pos = mesh.getVertex(i).clone();
+        
+        const avgDir = pos.clone().normalize().multiplyScalar(displacement);
+        
+        const newIndex = mesh.addVertex(pos.add(avgDir));
+        oldToNewVertex.set(i, newIndex);
+      }
+    }
+  }
+  
+  // Step 2: build side quads and collect new edges
+  for (const [a, b] of edges) {
+    const a2 = oldToNewVertex.get(a)!;
+    const b2 = oldToNewVertex.get(b)!;
+    
+    // Side wall (quad = 2 triangles)
+    mesh.addFace(b2, b, a);
+    mesh.addFace(a, a2, b2);
+    
+    // Record new edges
+    newEdges.push([a, a2], [b, b2], [a2, b2], [b2, a]);
+  }
 
+  // Final sync
+  mesh.rebuild();
+  mesh.rebuildFromGeometry();
+  mesh.computeFlatNormals();
+  mesh.commit();
+
+  return newEdges;
 }
