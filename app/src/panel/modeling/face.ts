@@ -3,9 +3,9 @@ import { Viewport } from '../viewport';
 import { TransformControls, LineSegments2 } from 'three/examples/jsm/Addons.js';
 import { createRaycastFromScreen } from '../util';
 import { createFaceOutlineDisplay } from '../display';
-import { EditableMesh, Face } from './mesh';
+import { EditableMesh } from './mesh';
 import { ModelingTool } from './tools';
-import * as TOOLS from './tools';
+import * as EXTRUDE from './extrude'
 
 let selected: EditableMesh | null = null;
 let selectedIndices: number[] = [];
@@ -157,7 +157,7 @@ function onTransformMove() {
 export const tool:ModelingTool = {
   extrude: () => {
     if(selected === null) return;
-    const added = TOOLS.extrudeFaces(selected, selectedIndices.map(i => selected!.faces[i]), 0.1);
+    const added = EXTRUDE.extrudeFaces(selected, selectedIndices.map(i => selected!.faces[i]), 0.1);
     selectedIndices = added;
     updateSelectionDisplay();
   }
