@@ -6,8 +6,11 @@ import { createEdgeDisplay } from '../display';
 import { Edge, EditableMesh } from './mesh';
 import { ModelingTool } from './tools';
 import * as EXTRUDE from './extrude';
-import * as BEVEL from './bevel';
 import * as KNIFE from './knife';
+import * as BEVEL from './bevel';
+import { Modeling } from '../modeling';
+import { moveEdgesInward } from './controls';
+import { updateSelectionDisplay } from './face';
 
 let enabled = false;
 let selected: EditableMesh | null = null;
@@ -152,6 +155,12 @@ function onTransformMove() {
   if (!selected || selectedEdges.length === 0) return;
 
   const worldDelta = dummy.position.clone().sub(dummyOrigin);
+  if(Modeling.control.inwardScaling) {
+    moveEdgesInward(selected, selectedEdges, worldDelta.y);
+    dummyOrigin.copy(dummy.position);
+    updateTransformOrigin();
+    return;
+  }
   const localDelta = selected.mesh.worldToLocal(selected.mesh.localToWorld(worldDelta.clone()));
   dummyOrigin.copy(dummy.position);
 
@@ -178,7 +187,10 @@ export const tool:ModelingTool = {
   },
   bevel: () => {
     if(selected === null) return;
-    const added = BEVEL.bevelEdges(selected, selectedEdges, 0.1);
+    const added = BEVEL.bevelEdges(selected, selectedEdges, 0.1, Modeling.options.bevel.segments);
+    selectedEdges = added;
+    updateSelectionDisplay();
+    updateTransformOrigin();
   },
   knife: () => {
     if(selected === null) return;

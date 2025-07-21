@@ -11,7 +11,7 @@ export class EditableMesh {
 
   vertices: THREE.Vector3[] = [];
   faces: Face[] = [];
-  edges: Set<string> = new Set(); // key = sorted "a:b", internal only
+  edges: Edge[] = []; // key = sorted "a:b", internal only
 
 
   vertMap: Map<number, number> = new Map(); // Add this field in the class
@@ -26,7 +26,7 @@ export class EditableMesh {
   dispose() {
     this.vertices.length = 0;
     this.faces.length = 0;
-    this.edges.clear();
+    this.edges.length = 0;
     this.vertMap.clear();
   }
 
@@ -141,14 +141,21 @@ export class EditableMesh {
     return connected;
   }
   // ======== Egde ========
-  addEdge(a: number, b: number) {
-    const [min, max] = a < b ? [a, b] : [b, a];
-    this.edges.add(`${min}:${max}`);
+  addEdge(a: number, b: number):number {
+    this.edges.push([a,b]);
+    return this.edges.length - 1;
   }
-
-  getEdgeVertices(key: string): [THREE.Vector3, THREE.Vector3] {
-    const [a, b] = key.split(':').map(Number);
-    return [this.vertices[a], this.vertices[b]];
+  getEdge(index:number) {
+    return this.edges[index];
+  }
+  getEdgeIndex(a: number, b: number) {
+    return this.edges.findIndex(e => (e[0] === a && e[1] === b) || (e[0] === b && e[1] === a));
+  }
+  getEdgesUsingVertex(v: number):Edge[] {
+    return this.edges.filter(e => e.includes(v));
+  }
+  getFacesUsingVertex(v:number): Face[] {
+    return this.faces.filter(f => f.includes(v));
   }
   getFacesUsingEdge(a: number, b: number): Face[] {
     const faces: Face[] = [];
@@ -159,23 +166,29 @@ export class EditableMesh {
     }
     return faces;
   }
-  isPointOnEdge(p: number, a: number, b: number, tolerance = 1e-5): boolean {
-    const P = this.vertices[p];
-    const A = this.vertices[a];
-    const B = this.vertices[b];
-
-    const AB = B.clone().sub(A);
-    const AP = P.clone().sub(A);
-
-    const abLengthSq = AB.lengthSq();
-    const proj = AP.dot(AB) / abLengthSq;
-
-    if (proj < -tolerance || proj > 1 + tolerance) return false;
-
-    const closest = A.clone().add(AB.multiplyScalar(proj));
-    return closest.distanceTo(P) < tolerance;
+  getConnectedFaces(f:Face):Face[] {
+    return [
+      ...this.getFacesUsingEdge(f[0], f[1]),
+      ...this.getFacesUsingEdge(f[1], f[2]),
+      ...this.getFacesUsingEdge(f[2], f[0]),
+    ].filter(face => face !== f);
   }
-
+  getEdgePointOn(p: THREE.Vector3, threshold = 1e-4): number | null {
+    for(let i = 0; i < this.edges.length; i++) {
+      const edge = this.edges[i];
+      const v0 = this.getVertex(edge[0]);
+      const v1 = this.getVertex(edge[1]);
+      const edgeDir = new THREE.Vector3().subVectors(v1, v0);
+      const edgeLengthSq = edgeDir.lengthSq();
+      if (edgeLengthSq === 0) continue;
+      const toP = new THREE.Vector3().subVectors(p, v0);
+      const t = THREE.MathUtils.clamp(toP.dot(edgeDir) / edgeLengthSq, 0, 1);
+      const closest = new THREE.Vector3().copy(v0).addScaledVector(edgeDir, t);
+      const distSq = closest.distanceToSquared(p);
+      if (distSq < threshold * threshold) { return i; }
+    }
+    return null;
+  }
 
   commit(): void {
     const posAttr = this.geometry.getAttribute('position') as THREE.BufferAttribute;
@@ -243,8 +256,8 @@ export class EditableMesh {
     this.faces.splice(index, 1);
 
     const removeEdge = (i: number, j: number) => {
-      const key = [Math.min(i, j), Math.max(i, j)].join(":");
-      this.edges.delete(key);
+      const index = this.getEdgeIndex(i, j);
+      this.edges.splice(index, 1);
     };
 
     removeEdge(a, b);

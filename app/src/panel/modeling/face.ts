@@ -8,6 +8,8 @@ import { ModelingTool } from './tools';
 import * as EXTRUDE from './extrude';
 import * as KNIFE from './knife';
 import * as INSET from './inset';
+import { Modeling } from '../modeling';
+import { Notification } from '../notif';
 
 export let selected: EditableMesh | null = null;
 export let selectedIndices: number[] = [];
@@ -159,7 +161,7 @@ function onTransformMove() {
 export const tool:ModelingTool = {
   extrude: () => {
     if(selected === null) return;
-    const added = EXTRUDE.extrudeFaces(selected, selectedIndices.map(i => selected!.faces[i]), 0.1);
+    const added = EXTRUDE.extrudeFaces(selected, selectedIndices.map(i => selected!.faces[i]), Modeling.options.extrude.displacement);
     selectedIndices = added;
     updateSelectionDisplay();
   },

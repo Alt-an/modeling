@@ -5,3 +5,37 @@
     border:var(--prm-40) 2px solid;
     z-index: 5;
 }
+#modeling-option {
+    display:flex;
+    flex-direction: column;
+}
+#modeling-option > label {
+    font-size:var(--fs-xs);
+    font-weight:500;
+    display:flex;
+    gap:var(--spc-xs);
+}
+#modeling-option input {
+    width:4ch;
+    display:flex;
+    justify-content: center;
+    padding:0 var(--spc-xs);
+    font-size:var(--fs-xs);
+    background:var(--scn-70);
+    color:var(--scn-10);
+    border:0;
+    font-weight:400;
+    font-family: 'Courier New', Courier, monospace;
+}
+#modeling-option input[type="checkbox"] {
+    width:2ch;
+}
+#modeling-option input[type="range"] {
+    width:8ch;
+    padding:var(--spx-xs);
+}
+#modeling-option .section {
+    font-size:var(--fs-sm);
+    font-weight: 600;
+    margin-top:var(--spx-sm);
+}

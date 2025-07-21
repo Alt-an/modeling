@@ -52,7 +52,7 @@ function populateDropdowns() {
 // Geometry
 addCategory("Geometry", "shapes");
 addOption("Geometry", "Box", "deployed_code", () => new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), material.clone()));
-addOption("Geometry", "Sphere", "ev_shadow", () => new THREE.Mesh(new THREE.SphereGeometry(0.62, 32, 24), material.clone()));
+addOption("Geometry", "Sphere", "ev_shadow", () => new THREE.Mesh(new THREE.SphereGeometry(0.62, 8, 6), material.clone()));
 addOption("Geometry", "Cylinder", "database", () => new THREE.Mesh(new THREE.CylinderGeometry(0.564, 0.564, 1, 32), material.clone()));
 addOption("Geometry", "Cone", "tornado", () => new THREE.Mesh(new THREE.ConeGeometry(0.84, 1, 32), material.clone()));
 addOption("Geometry", "Torus", "donut_small", () => new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.28, 16, 32), material.clone()));

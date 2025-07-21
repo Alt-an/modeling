@@ -7,6 +7,9 @@ import { TransformControls } from 'three/examples/jsm/Addons.js';
 import { EditableMesh } from './mesh';
 import { ModelingTool } from './tools';
 import { mergeVertices } from './merge';
+import { Modeling } from '../modeling';
+import { moveVerticesInward } from './controls';
+
 
 let enabled = false;
 let selected: EditableMesh | null = null;
@@ -129,9 +132,16 @@ function onTransformMove() {
   const worldDelta = dummy.position.clone().sub(dummyOrigin);
 
   // Convert world-space delta to mesh-local delta
+  if(Modeling.control.inwardScaling) {
+    moveVerticesInward(selected, selectedIndices, worldDelta.y);
+    dummyOrigin.copy(dummy.position);
+    updateAllDisplays();
+    return;
+  }
   const localDelta = worldDelta.clone().applyMatrix3(
     new THREE.Matrix3().setFromMatrix4(selected.mesh.matrixWorld).invert()
   );
+
 
   // Apply to vertices
   dummyOrigin.copy(dummy.position);
@@ -224,7 +234,7 @@ function onPointerDown(e: PointerEvent) {
         updateTransformOrigin();
       }
     });
-  }, 750);
+  }, 300);
 }
 
 function clearSelectionTimer() {
@@ -236,7 +246,9 @@ function clearSelectionTimer() {
 export const tool:ModelingTool = {
   merge: () => {
     if(selected === null) return;
-    mergeVertices(selected, selectedIndices);
-    select(selected.mesh);
+    const added = mergeVertices(selected, selectedIndices);
+    selectedIndices = [added];
+    updateVertexDisplayFromMesh();
+    updateTransformOrigin();
   },
 }

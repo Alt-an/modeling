@@ -43,6 +43,14 @@ export const Keybinds = {
         }
         return;
       }
+      if(e.shiftKey) {
+        switch(Mode.current) {
+          case "modeling": switch(e.key) {
+            case '!': Modeling.inwardScaling(); break;
+          }
+        }
+        return;
+      }
       switch(Mode.current) {
         case "layout": switch (e.key) {
           case 'Backspace': Editor.delete(); break;

@@ -8,20 +8,69 @@ import * as THREE from 'three';
 import { Mode } from './mode';
 import { ModelingTool } from './modeling/tools';
 import { Notification } from './notif';
+import * as CREATE from '../component/create';
 
 let transform!: TransformControls;
 let currentMode: 'vertex' | 'edge' | 'face' = 'vertex';
 let modelModes!:Function[];
 let modelTools!:Function[];
+let modelControls!:Function[];
 let selected:THREE.Mesh|null;
 let tool:ModelingTool = Vertex.tool;
 
+function initOptions() {
+  const panel = document.getElementById("modeling-option")!;
+  const section = (title:string) => {
+    const el = document.createElement("div");
+    el.className = "section";
+    el.innerText = title;
+    return el;
+  };
+  [
+    section("Control"),
+    CREATE.slider("Snap", 0, 0, 1, 0.125, (val) => { transform.translationSnap = val }),
+    CREATE.toggle("Along Face Normal", true, (val) => {}),
+    section("Extrude"),
+    CREATE.number("Displacement", 0.1, 0, (val) => { Modeling.options.extrude.displacement = val }),
+    CREATE.toggle("Along Normal", true, (val) => {}),
+    CREATE.toggle("Keep Face Together", true, (val) => {}),
+    section("Inset"),
+    CREATE.number("Displacement", 0.1, 0, (val) => {}),
+    CREATE.toggle("Remove Original", true, (val) => {}),
+    CREATE.toggle("Use Region", true, (val) => {}),
+    CREATE.toggle("Boundary Only", true, (val) => {}),
+    section("Bevel"),
+    CREATE.number("Segments", 7, 1, (val) => { Modeling.options.bevel.segments = val }),
+    CREATE.number("Profile", 0.5, 0, (val) => { Modeling.options.bevel.profile = val }),
+    CREATE.toggle("Clamp Overlap", true, (val) => {}),
+    CREATE.dropdown("Method", ["Offset", "Width"], "Offset", (val) => {}),
+    section("Knife"),
+    CREATE.toggle("Show Cut Plane", false, (val) => {}),
+    CREATE.toggle("Cut Through", true, (val) => {}),
+    section("Merge"),
+    CREATE.dropdown("Mode", ["Center", "Fisrt", "Last", "Collapse"], "Center", (val) => {}),
+  ].forEach(e => {
+    panel.appendChild(e);
+  });
+}
 export const Modeling = {
   vertexPositions: [] as THREE.Vector3[],
   dummy: new THREE.Object3D(),
-
+  control: {
+    inwardScaling: false
+  },
+  options: {
+    extrude: {
+      displacement: 0.1
+    },
+    bevel: {
+      segments: 7,
+      profile: 0.5
+    }
+  },
   init(container: HTMLElement) {
     transform = new TransformControls(Viewport.camera, Viewport.renderer.domElement);
+    initOptions();
     fixTransformControls(transform);
     document.addEventListener("modechange", () => {
       if(Mode.current === "modeling") {
@@ -57,6 +106,9 @@ export const Modeling = {
       () => bevel(),
       () => knife(),
       () => merge(),
+    ]);
+    modelControls = getButtons(".model-control button", [
+      () => inwardScaling()
     ]);
   },
 
@@ -102,7 +154,9 @@ export const Modeling = {
   inset() { modelTools[1]() },
   bevel() { modelTools[2]() },
   knife() { modelTools[3]() },
-  merge() { modelTools[4]() }
+  merge() { modelTools[4]() },
+
+  inwardScaling() { modelControls[0]() },
 };
 
 function vertex() { Modeling.setMode('vertex'); }
@@ -118,3 +172,13 @@ function inset() { if(tool) invoke(tool.inset) }
 function bevel() { if(tool) invoke(tool.bevel) }
 function knife() { if(tool) invoke(tool.knife) }
 function merge() { if(tool) invoke(tool.merge) }
+function inwardScaling() { 
+  Modeling.control.inwardScaling = !Modeling.control.inwardScaling;
+  if(Modeling.control.inwardScaling) {
+    transform.showX = false;
+    transform.showZ = false;
+  } else {
+    transform.showX = true;
+    transform.showZ = true;
+  }
+}
