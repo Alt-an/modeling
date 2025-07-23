@@ -40,6 +40,7 @@ function initOptions() {
     CREATE.toggle("Use Region", true, (val) => {}),
     CREATE.toggle("Boundary Only", true, (val) => {}),
     section("Bevel"),
+    CREATE.number("Widths", 0.1, 0, (val) => { Modeling.options.bevel.width = val }),
     CREATE.number("Segments", 7, 1, (val) => { Modeling.options.bevel.segments = val }),
     CREATE.number("Profile", 0.5, 0, (val) => { Modeling.options.bevel.profile = val }),
     CREATE.toggle("Clamp Overlap", true, (val) => {}),
@@ -65,7 +66,8 @@ export const Modeling = {
     },
     bevel: {
       segments: 7,
-      profile: 0.5
+      profile: 0.5,
+      width: 0.1
     }
   },
   init(container: HTMLElement) {

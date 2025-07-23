@@ -73,10 +73,10 @@ export function dropdown<T extends string>(
 ) {
   const wrapper = document.createElement("label");
   wrapper.className = "dropdown";
-
+  
   const title = document.createElement("span");
   title.textContent = label;
-
+  
   const select = document.createElement("select");
   for (const opt of options) {
     const option = document.createElement("option");
@@ -85,9 +85,22 @@ export function dropdown<T extends string>(
     if (opt === selected) option.selected = true;
     select.appendChild(option);
   }
-
+  
   select.onchange = () => onChange(select.value as T);
-
+  
   wrapper.append(title, select);
+  return wrapper;
+}
+export function input(label: string, value: string, onChange: (v: string) => void) {
+  const wrapper = document.createElement("label");
+  wrapper.className = "input";
+  const title = document.createElement("span");
+  title.textContent = label;
+  const input = document.createElement("input");
+  input.type = "string";
+  input.value = value;
+  input.oninput = () => onChange(input.value);
+
+  wrapper.append(title, input);
   return wrapper;
 }

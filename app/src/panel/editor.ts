@@ -16,7 +16,7 @@ export const Editor = {
   init(container: HTMLDivElement) {
     Viewport.init(container);
     Modeling.init(container);
-    //Material.init(container);
+    Material.init(container);
     Tool.init();
     Keybinds.init();
 

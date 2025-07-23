@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { EditableMesh, Edge, Face } from './mesh';
+import { Viewport } from '../viewport';
 
 export function bevelEdges(
   mesh: EditableMesh,
@@ -7,164 +8,209 @@ export function bevelEdges(
   width = 0.1,
   segments = 2
 ): Edge[] {
+  const edges:Edge[] = [];
+  selectedEdges.forEach(edge => {
+    edges.push(...bevelSingleEdge(mesh, [edge], width, segments));
+  });
+  return edges;
+}
+export function bevelSingleEdge(
+  mesh: EditableMesh,
+  selectedEdges: Edge[],
+  width = 0.1,
+  segments = 2
+): Edge[] {
   if (segments < 2) return [];
 
-  const anchorEdges: number[] = [];
-  const anchorPoints: number[][] = [];
-  const fillingEdges: number[][] = [];
-  const bevelEdgesResult: Edge[] = [];
+  const bevelAnchors: Edge[] = [];
+  const fillingEdges: Edge[] = [];
 
   for (const edge of selectedEdges) {
     const [a, b] = edge;
     const connectedFaces = mesh.getFacesUsingEdge(a, b);
 
     for (const face of connectedFaces) {
-      const dir = getDirection(edge, face, mesh).multiplyScalar(width);
+      const dir = computeBevelDirection(edge, face, mesh).multiplyScalar(width);
 
-      const anchor1 = mesh.getVertex(a).clone().add(dir);
-      const anchor2 = mesh.getVertex(b).clone().add(dir);
-      const anchor1Index = mesh.addVertex(anchor1);
-      const anchor2Index = mesh.addVertex(anchor2);
+      const anchorA = mesh.getVertex(a).clone().add(dir);
+      const anchorB = mesh.getVertex(b).clone().add(dir);
 
-      const edge1 = mesh.getEdgePointOn(anchor1);
-      const edge2 = mesh.getEdgePointOn(anchor2);
-      if (edge1 === null || edge2 === null) throw new Error('Failed to find supporting edge');
+      const anchorAIndex = mesh.addVertex(anchorA);
+      const anchorBIndex = mesh.addVertex(anchorB);
+      bevelAnchors.push([anchorAIndex, anchorBIndex]);
 
-      const newEdgeIndex = mesh.addEdge(anchor1Index, anchor2Index);
-      anchorEdges.push(newEdgeIndex);
-      anchorPoints.push([anchor1Index, anchor2Index]);
+      const supportAIndex = findSupportingEdge(mesh, anchorA);
+      const supportBIndex = findSupportingEdge(mesh, anchorB);
+      if (supportAIndex === null) {
+        throw new Error('Failed to find supporting edge A');
+      }
+      if (supportBIndex === null) {
+        throw new Error('Failed to find supporting edge B');
+      }
 
-      for (const edgeIndex of [edge1, edge2]) {
+      // Replace original vertices in face
+      for (const edgeIndex of [supportAIndex, supportBIndex]) {
         const [v0, v1] = mesh.getEdge(edgeIndex);
-        const connected = mesh.getFacesUsingEdge(v0, v1).filter(f => f.includes(a) || f.includes(b));
-        for (const f of connected) {
+        const touchingFaces = mesh.getFacesUsingEdge(v0, v1).filter(f => f.includes(a) || f.includes(b));
+        for (const f of touchingFaces) {
           const ia = f.indexOf(a);
           const ib = f.indexOf(b);
-          if (ia >= 0) f[ia] = anchor1Index;
-          if (ib >= 0) f[ib] = anchor2Index;
+          if (ia >= 0) f[ia] = anchorAIndex;
+          if (ib >= 0) f[ib] = anchorBIndex;
         }
       }
 
-      const point1 = mesh.getEdge(edge1).find(v => v !== a)!;
-      const point2 = mesh.getEdge(edge2).find(v => v !== b)!;
+      const sideA = mesh.getEdge(supportAIndex).find(v => v !== a)!;
+      const sideB = mesh.getEdge(supportBIndex).find(v => v !== b)!;
 
       fillingEdges.push([
-        mesh.addEdge(anchor1Index, point1),
-        mesh.addEdge(anchor2Index, point2)
+        mesh.addEdge(anchorAIndex, sideA),
+        mesh.addEdge(anchorBIndex, sideB)
       ]);
     }
   }
 
-  // Remove original faces
+  // Remove original faces touching selected edges
   for (const [a, b] of selectedEdges) {
-    for (const f of mesh.getFacesUsingVertex(a)) {
-      const i = mesh.faces.indexOf(f);
-      if (i !== -1) mesh.faces.splice(i, 1);
-    }
-    for (const f of mesh.getFacesUsingVertex(b)) {
-      const i = mesh.faces.indexOf(f);
-      if (i !== -1) mesh.faces.splice(i, 1);
-    }
+    removeFacesTouchingVertex(mesh, a);
+    removeFacesTouchingVertex(mesh, b);
   }
 
-  // Fill edge ring
-  const bridgeEdges = (segments > 2)
-    ? fillBetweenEdges(mesh, mesh.getEdge(anchorEdges[0]), mesh.getEdge(anchorEdges[1]), segments - 2)
+  // Fill between anchor edges
+  const [anchorEdge1, anchorEdge2] = bevelAnchors;
+  const bridgeSegmentEdges = (segments > 2)
+    ? fillBetweenEdges(mesh, anchorEdge1, anchorEdge2, segments - 2)
     : [];
 
-  const edgeRing = [
-    anchorEdges[0],
-    ...bridgeEdges.map(([v0, v1]) => mesh.addEdge(v0, v1)),
-    anchorEdges[1]
+  const spanEdges = [
+    anchorEdge1,
+    ...bridgeSegmentEdges,
+    anchorEdge2
   ];
 
-  for (let i = 0; i < edgeRing.length - 1; i++) {
-    const e1 = mesh.getEdge(edgeRing[i]);
-    const e2 = mesh.getEdge(edgeRing[i + 1]);
-    mesh.addFace(e1[1], e1[0], e2[0]);
-    mesh.addFace(e2[0], e2[1], e1[1]);
+  // Reconstruct bridging faces
+  for (let i = 0; i < spanEdges.length - 1; i++) {
+    const [v0a, v0b] = spanEdges[i];
+    const [v1a, v1b] = spanEdges[i + 1];
+    mesh.addFace(v0b, v0a, v1a); // bottom triangle
+    mesh.addFace(v1a, v1b, v0b); // top triangle
   }
 
-  // Fill corner gaps using overlapping shared vertex method
-  const cornerX = findOverlappingPoint(mesh, mesh.getEdge(fillingEdges[0][0]), mesh.getEdge(fillingEdges[1][0]));
-  const cornerY = findOverlappingPoint(mesh, mesh.getEdge(fillingEdges[0][1]), mesh.getEdge(fillingEdges[1][1]));
+  // Fill corner gaps using shared vertex method
+  const [fillA1, fillA2] = fillingEdges[0];
+  const [fillB1, fillB2] = fillingEdges[1];
 
-  if (cornerX === null || cornerY === null) throw new Error('Corner join failed');
+  const cornerA = findOverlappingCorner(mesh, mesh.getEdge(fillA1), mesh.getEdge(fillB1));
+  const cornerB = findOverlappingCorner(mesh, mesh.getEdge(fillA2), mesh.getEdge(fillB2));
 
-  for (let i = 0; i < edgeRing.length - 1; i++) {
-    const e1 = mesh.getEdge(edgeRing[i]);
-    const e2 = mesh.getEdge(edgeRing[i + 1]);
-    mesh.addFace(e2[0], e1[0], cornerX);
-    mesh.addFace(e1[1], e2[1], cornerY);
+  if (cornerA === null || cornerB === null) {
+    throw new Error('Corner fill failed due to missing overlap');
+  }
+
+  for (let i = 0; i < spanEdges.length - 1; i++) {
+    const [v0a, v0b] = spanEdges[i];
+    const [v1a, v1b] = spanEdges[i + 1];
+    mesh.addFace(v1a, v0a, cornerA);
+    mesh.addFace(v0b, v1b, cornerB);
   }
 
   mesh.rebuild();
   mesh.rebuildFromGeometry();
   mesh.commit();
 
-  return bevelEdgesResult;
+  return []; // No new edge tracking required per logic
 }
 
-function getDirection(edge: Edge, face: Face, mesh: EditableMesh): THREE.Vector3 {
+// ---- Utility functions (same logic, cleaner form) ----
+
+function computeBevelDirection(edge: Edge, face: Face, mesh: EditableMesh): THREE.Vector3 {
   const third = mesh.getVertex(face.find(v => !edge.includes(v))!);
   const dir1 = third.clone().sub(mesh.getVertex(edge[0]));
   const dir2 = third.clone().sub(mesh.getVertex(edge[1]));
   return dir1.lengthSq() > dir2.lengthSq() ? dir2.normalize() : dir1.normalize();
 }
 
-function findOverlappingPoint(mesh: EditableMesh, edge1: Edge, edge2: Edge): number | null {
+function findSupportingEdge(mesh: EditableMesh, point: THREE.Vector3): number | null {
+  for (let i = 0; i < mesh.edges.length; i++) {
+    const [a, b] = mesh.getEdge(i);
+    const va = mesh.getVertex(a), vb = mesh.getVertex(b);
+    const closest = closestPointOnSegment(va, vb, point);
+    if (closest.distanceToSquared(point) < 1e-6) return i;
+  }
+  return null;
+}
+
+function closestPointOnSegment(a: THREE.Vector3, b: THREE.Vector3, p: THREE.Vector3): THREE.Vector3 {
+  const ab = b.clone().sub(a);
+  const t = Math.max(0, Math.min(1, p.clone().sub(a).dot(ab) / ab.lengthSq()));
+  return a.clone().add(ab.multiplyScalar(t));
+}
+
+function removeFacesTouchingVertex(mesh: EditableMesh, v: number) {
+  const faces = mesh.getFacesUsingVertex(v);
+  for (const face of faces) {
+    const i = mesh.faces.indexOf(face);
+    if (i !== -1) mesh.faces.splice(i, 1);
+  }
+}
+
+function findOverlappingCorner(mesh: EditableMesh, edge1: Edge, edge2: Edge): number | null {
   const faces1 = mesh.getFacesUsingEdge(edge1[0], edge1[1]);
   const faces2 = mesh.getFacesUsingEdge(edge2[0], edge2[1]);
 
   for (const f1 of faces1) {
     for (const f2 of faces2) {
-      const v = findSharedVertex(f1, f2);
-      if (v !== null) return v;
+      const shared = f1.find(v => f2.includes(v));
+      if (shared !== undefined) return shared;
     }
   }
   return null;
 }
 
-function findSharedVertex(f1: Face, f2: Face): number | null {
-  return f1.find(v => f2.includes(v)) ?? null;
-}
+function fillBetweenEdges(
+  mesh: EditableMesh,
+  [a1, a2]: Edge,
+  [b1, b2]: Edge,
+  amount: number
+): Edge[] {
+  const pa1 = mesh.getVertex(a1);
+  const pa2 = mesh.getVertex(a2);
+  const pb1 = mesh.getVertex(b1);
+  const pb2 = mesh.getVertex(b2);
 
-function fillBetweenEdges(mesh: EditableMesh, e1: Edge, e2: Edge, amount: number): Edge[] {
-  const [a1, a2] = [mesh.getVertex(e1[0]), mesh.getVertex(e1[1])];
-  const [b1, b2] = [mesh.getVertex(e2[0]), mesh.getVertex(e2[1])];
+  const normal = new THREE.Vector3()
+    .crossVectors(pa1.clone().sub(pb1), pa1.clone().sub(pa2))
+    .normalize();
 
-  const dir = a1.clone().sub(b1);
-  const cross = a1.clone().sub(a2);
-  const normal = new THREE.Vector3().crossVectors(dir, cross).normalize();
+  const row1 = bezierCurvePoints(pa1, pb1, normal, amount);
+  const row2 = bezierCurvePoints(pa2, pb2, normal, amount);
 
-  const p1 = createPointsBetweenEdges(a1, b1, normal, amount);
-  const p2 = createPointsBetweenEdges(a2, b2, normal, amount);
-
-  const edges: Edge[] = [];
-  for (let i = 0; i < p1.length; i++) {
-    const i1 = mesh.addVertex(p1[i]);
-    const i2 = mesh.addVertex(p2[i]);
-    edges.push([i1, i2]);
+  const result: Edge[] = [];
+  for (let i = 0; i < amount; i++) {
+    const v1 = mesh.addVertex(row1[i]);
+    const v2 = mesh.addVertex(row2[i]);
+    result.push([v1, v2]);
   }
-  return edges;
+
+  return result;
 }
 
-function createPointsBetweenEdges(
+function bezierCurvePoints(
   a: THREE.Vector3,
   b: THREE.Vector3,
   normal: THREE.Vector3,
-  amount: number,
+  segments: number,
   profile = 0.5
 ): THREE.Vector3[] {
-  const mid = new THREE.Vector3().addVectors(a, b).multiplyScalar(0.5);
+  const mid = a.clone().add(b).multiplyScalar(0.5);
   const control = mid.clone().add(normal.clone().multiplyScalar(profile * a.distanceTo(b)));
 
   const points: THREE.Vector3[] = [];
-  for (let i = 1; i <= amount; i++) {
-    const t = i / (amount + 1);
-    const p1 = new THREE.Vector3().lerpVectors(a, control, t);
-    const p2 = new THREE.Vector3().lerpVectors(control, b, t);
-    points.push(new THREE.Vector3().lerpVectors(p1, p2, t));
+  for (let i = 1; i <= segments; i++) {
+    const t = i / (segments + 1);
+    const p1 = a.clone().lerp(control, t);
+    const p2 = control.clone().lerp(b, t);
+    points.push(p1.clone().lerp(p2, t));
   }
   return points;
 }

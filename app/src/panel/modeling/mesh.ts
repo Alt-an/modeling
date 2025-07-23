@@ -141,8 +141,12 @@ export class EditableMesh {
     return connected;
   }
   // ======== Egde ========
-  addEdge(a: number, b: number):number {
-    this.edges.push([a,b]);
+  edgeExists(a: number, b: number): boolean {
+    return this.getEdgeIndex(a, b) !== -1;
+  }
+  addEdge(a: number, b: number): number {
+    if (this.edgeExists(a, b)) return this.getEdgeIndex(a, b);
+    this.edges.push([a, b]);
     return this.edges.length - 1;
   }
   getEdge(index:number) {

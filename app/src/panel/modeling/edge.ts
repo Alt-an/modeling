@@ -187,7 +187,7 @@ export const tool:ModelingTool = {
   },
   bevel: () => {
     if(selected === null) return;
-    const added = BEVEL.bevelEdges(selected, selectedEdges, 0.1, Modeling.options.bevel.segments);
+    const added = BEVEL.bevelEdges(selected, selectedEdges, Modeling.options.bevel.width, Modeling.options.bevel.segments);
     selectedEdges = added;
     updateSelectionDisplay();
     updateTransformOrigin();
